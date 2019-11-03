@@ -1,5 +1,4 @@
 ﻿using System;
-using KSP.UI.Screens;
 using UnityEngine;
 
 namespace HullBreach
@@ -10,10 +9,12 @@ namespace HullBreach
 
         public static string SettingsConfigUrl = "GameData/HullBreach/settings.cfg";
 
-        public static double flowRate { get; set; }
-        public static double critFlowRate { get; set; }
-        public static double breachTemp { get; set; }
-        public static double critBreachTemp { get; set; }
+        public static double MinorFlooding { get; set; }
+        public static double SeriousFlooding { get; set; }
+        public static double FatalFlooding { get; set; }
+        public static double MinorDmg { get; set; }
+        public static double SeriousDmg { get; set; }
+        public static double FatalDmg { get; set; }
 
         public static bool ecDrain { get; set; }
         public static bool isHullBreachEnabled { get; set; }
@@ -38,10 +39,12 @@ namespace HullBreach
 
                 ConfigNode settings = fileNode.GetNode("HullBreachSettings");
 
-                flowRate = double.Parse(settings.GetValue("flowRate"));
-                critFlowRate = double.Parse(settings.GetValue("critFlowRate"));
-                breachTemp = double.Parse(settings.GetValue("breachTemp"));
-                critBreachTemp = double.Parse(settings.GetValue("critBreachTemp"));
+                MinorFlooding = double.Parse(settings.GetValue("MinorFlooding"));
+                SeriousFlooding = double.Parse(settings.GetValue("SeriousFlooding"));
+                FatalFlooding = double.Parse(settings.GetValue("FatalFlooding"));
+                MinorDmg = double.Parse(settings.GetValue("MinorDmg"));
+                SeriousDmg = double.Parse(settings.GetValue("SeriousDmg"));
+                FatalDmg = double.Parse(settings.GetValue("FatalDmg"));
 
                 ecDrain = bool.Parse(settings.GetValue("ecDrain"));
                 isHullBreachEnabled = bool.Parse(settings.GetValue("isHullBreachEnabled"));
@@ -64,10 +67,12 @@ namespace HullBreach
 
                 ConfigNode settings = fileNode.GetNode("HullBreachSettings");
 
-                settings.SetValue("flowRate", flowRate);
-                settings.SetValue("critFlowRate", critBreachTemp);
-                settings.SetValue("breachTemp", breachTemp);
-                settings.SetValue("critBreachTemp", critBreachTemp);
+                settings.SetValue("MinorFlooding", MinorFlooding);
+                settings.SetValue("SeriousFlooding", SeriousFlooding);
+                settings.SetValue("FatalFlooding", FatalFlooding);
+                settings.SetValue("MinorDmg", MinorDmg);
+                settings.SetValue("SeriousDmg", SeriousDmg);
+                settings.SetValue("FatalDmg", FatalDmg);
                 settings.SetValue("ecDrain", ecDrain);
                 settings.SetValue("isHullBreachEnabled", isHullBreachEnabled);
 

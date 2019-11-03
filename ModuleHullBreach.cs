@@ -1,10 +1,8 @@
 ﻿using System;
 using UnityEngine;
-using BDArmory.Core.Extension;
-using BDArmory.Core.Module;
 
 namespace HullBreach
-{   
+{
     public class ModuleHullBreach : PartModule
     {
         static ModuleHullBreach instance;
@@ -12,20 +10,29 @@ namespace HullBreach
 
         #region KSP Fields
 
+        float _hp = 0;
+        float maxDamage = 0;
+
         public bool isHullBreached;
-        public string DamageState = "None"; //None, Normal,Critical
+        public string DamageState = "None"; //None, Minor, Serious, Fatal
 
         [KSPField(isPersistant = false)]
-        public double flowRate = .5;
+        public double MinorFlooding = .3;
 
         [KSPField(isPersistant = false)]
-        public double critFlowRate = 1;
+        public double SeriousFlooding = .7;
 
         [KSPField(isPersistant = false)]
-        public double breachTemp = 0.6;
+        public double FatalFlooding = 1;
 
         [KSPField(isPersistant = false)]
-        public double critBreachTemp = 0.9;
+        public double MinorDmg = 0.90;
+
+        [KSPField(isPersistant = false)]
+        public double SeriousDmg = 0.6;
+
+        [KSPField(isPersistant = false)]
+        public double FatalDmg = 0.25;
 
         [KSPField(isPersistant = true)]
         public bool hydroExplosive = false;
@@ -35,7 +42,7 @@ namespace HullBreach
 
         [KSPField(guiActive = true, guiActiveEditor = true, guiName = "Crush Depth", isPersistant = true), UI_FloatRange(minValue = 0f, maxValue = 600f, stepIncrement = 1f)]
         public float crushDepth = 200f;
-                
+
         [KSPField(isPersistant = true)]
         public bool DepthCharge = false;
 
@@ -61,10 +68,11 @@ namespace HullBreach
 
         #endregion DebugFields
 
-        [UI_FloatRange(minValue = 1, maxValue = 100, stepIncrement = 1)] [KSPField(guiActive = true, guiActiveEditor = true,isPersistant = true, guiName = "Flow Rate")]
+        [UI_FloatRange(minValue = 1, maxValue = 100, stepIncrement = 1)]
+        [KSPField(guiActive = true, guiActiveEditor = true, isPersistant = true, guiName = "Flow Rate")]
         public float flowMultiplier = 1;
 
-        [KSPField(isPersistant = true, guiActive = true,guiActiveEditor = false, guiName = "Test Breach")]
+        [KSPField(isPersistant = true, guiActive = true, guiActiveEditor = false, guiName = "Test Breach")]
         public static Boolean forceHullBreach;
 
         [KSPEvent(guiActive = true, guiActiveEditor = false, guiName = "Test Breach")]
@@ -74,8 +82,6 @@ namespace HullBreach
 
         public void ToggleHullBreach()
         {
-            //if (!(vessel.id == FlightGlobals.ActiveVessel.id)) { return; }
-            //if (!(vessel.id == FlightGlobals.ActiveVessel.id)) { return; }
             if (!vessel.isActiveVessel) { return; }
 
             if (isHullBreached)
@@ -83,14 +89,14 @@ namespace HullBreach
                 isHullBreached = false;
                 forceHullBreach = false;
                 DamageState = "None";
-                FixedUpdate();
+                //FixedUpdate();
             }
             else
             {
                 isHullBreached = true;
                 forceHullBreach = true;
-                DamageState = "Critical";
-                FixedUpdate();
+                DamageState = "Serious";
+                //FixedUpdate();
             }
         }
 
@@ -102,7 +108,7 @@ namespace HullBreach
             {
                 part.force_activate();
                 instance = this;
-                if(part.FindModulesImplementing<ModuleHullBreach>().Count !=0)
+                if (part.FindModulesImplementing<ModuleHullBreach>().Count != 0)
                     config.Instance.vesselHullBreach = this;
             }
 
@@ -116,47 +122,23 @@ namespace HullBreach
                 Fields["flowMultiplier"].guiActive = false;
                 Fields["flowMultiplier"].guiActiveEditor = false;
             }
-
-            //if (state != StartState.Editor & vessel != null & partDebug == false)
-            //hiding info fields for troubleshooting
-            //foreach (BaseField f in Fields) { f.guiActive = false; } ???
-            //{
-            //Fields["Submerged Portion"].guiActive = false;
-            //Fields["Current Situation"].guiActive = false;
-            //Fields["Heat Level"].guiActive = false;
-            //Fields["Current Depth"].guiActive = false;
-            //Fields["Current Altitude"].guiActive = false;
-            //}
-
-            // GameEvents.onVesselStandardModification.Add(triggerCatastrophicBreach);
-            //  onVesselStandardModification collects various vessel events and fires them off with a single one.
-            //  Specifically - onPartAttach,onPartRemove,onPartCouple,onPartDie,onPartUndock,onVesselWasModified,onVesselPartCountChanged
-            // List<Part> HullParts = new List<Part>();
-
-            //  GameEvents.onVesselPartCountChanged.Add(triggerCatastrophicBreach);
-
-            //if(part.Modules.Contains("ModuleHullBreach")) GameEvents.onPartJointBreak.Add(CheckCatastrophicBreach);
         }
 
         public void CheckCatastrophicBreach(PartJoint partJoint, float breakForce)
         {
             if (vessel.situation != Vessel.Situations.SPLASHED) return;
-
-            //if (hull)
-            //{
-                // ScreenMessages.PostScreenMessage("Catastrophic Hull Damage", 30.0f, ScreenMessageStyle.UPPER_CENTER);
-            //}
         }
 
         public void FixedUpdate()
         {
-           if (!HighLogic.LoadedSceneIsFlight) return;
+            if (!HighLogic.LoadedSceneIsFlight) return;
 
-           try
+            try
             {
                 if (part == null ||
-                    !part.Modules.Contains("ModuleHullBreach") ||
-                    !part.Modules.Contains("HitpointTracker")                    
+                    !part.Modules.Contains<ModuleHullBreach>() ||
+                    !part.Modules.Contains("HitpointTracker") ||
+                    part.Modules.Contains<ModuleHBIgnore>()
                     )
                     return;
             }
@@ -169,46 +151,55 @@ namespace HullBreach
 
             if (part.WaterContact & ShipIsDamaged() & isHullBreached & hull)
             {
-                if (FlightGlobals.ActiveVessel)
+                if (DamageState == "Minor")
                 {
-                    if (DamageState == "Critical")
+                    vessel.IgnoreGForces(240);
+                    part.RequestResource("SeaWater", (0 - (MinorFlooding * (0.1 + part.submergedPortion) * flowMultiplier)));
+                    if (this.vessel == FlightGlobals.ActiveVessel)
                     {
-                        ScreenMessages.PostScreenMessage("Warning: Critical Hull Breach", 5.0f, ScreenMessageStyle.UPPER_CENTER);
+                        ScreenMessages.PostScreenMessage("Warning: Minor Hull Breach", 1.0f, ScreenMessageStyle.UPPER_CENTER);
+                    }
+                }
+                else
+                {
+                    if (DamageState == "Serious")
+                    {
+                        vessel.IgnoreGForces(240);
+                        part.RequestResource("SeaWater", (0 - (SeriousFlooding * (0.1 + part.submergedPortion) * flowMultiplier)));
+                        if (this.vessel == FlightGlobals.ActiveVessel)
+                        {
+                            ScreenMessages.PostScreenMessage("Warning: Serious Hull Breach!", 1.0f, ScreenMessageStyle.UPPER_CENTER);
+                        }
                     }
                     else
                     {
-                        ScreenMessages.PostScreenMessage("Warning: Hull Breach", 5.0f, ScreenMessageStyle.UPPER_CENTER);
+                        if (DamageState == "Fatal")
+                        {
+                            vessel.IgnoreGForces(240);
+                            part.RequestResource("SeaWater", (0 - (FatalFlooding * (0.1 + part.submergedPortion) * flowMultiplier)));
+                            if (this.vessel == FlightGlobals.ActiveVessel)
+                            {
+                                ScreenMessages.PostScreenMessage("Warning: FATAL HULL BREACH!!", 1.0f, ScreenMessageStyle.UPPER_CENTER);
+                            }
+                        }
                     }
-                }
-
-                switch (DamageState)
-                {
-                    case "Normal":
-                        vessel.IgnoreGForces(240);
-                        part.RequestResource("SeaWater", (0 - (flowRate*(0.1 + part.submergedPortion)*flowMultiplier)));
-                        break;
-                    case "Critical":
-                        vessel.IgnoreGForces(240);
-                        part.RequestResource("SeaWater",
-                            (0 - (critFlowRate*(0.1 + part.submergedPortion)*flowMultiplier)));
-                        break;
                 }
             }
 
-            //If part underwater add heat (damage) at a greater rate based on depth to simulate pressure
+            //If part underwater add damage at a greater rate based on depth to simulate pressure
             //sumergedPortion = Math.Round(this.part.submergedPortion, 4);
 
             if (part.submergedPortion == 1.00 & hydroExplosive)
             {
-                part.temperature += (0.1*part.depth);
+                part.temperature += (0.1 * part.depth);
             }
             else if (crushable && part.submergedPortion == 1.00 && !part.localRoot.name.StartsWith("Sub"))
             {
 
-                if(config.ecDrain)
-                    part.RequestResource("ElectricCharge", 1000); //kill EC if sumberged
+                if (config.ecDrain)
+                    part.RequestResource("ElectricCharge", 1000d); //kill EC if sumberged
 
-                if (crushable) part.buoyancy = -1.0f; // trying to kill floaty bits that never sink 
+                //if (crushable) part.buoyancy = -1.0f; // trying to kill floaty bits that never sink 
 
                 if (warnTimer > 0f) warnTimer -= Time.deltaTime;
                 if (part.depth > warnDepth && oldVesselDepth > warnDepth && warnTimer <= 0)
@@ -231,7 +222,7 @@ namespace HullBreach
                     warnTimer = 5;
                 }
                 oldVesselDepth = part.depth;
-                crushingDepth();
+                CrushingDepth();
             }
         }
 
@@ -248,14 +239,10 @@ namespace HullBreach
             }
             catch (Exception)
             { }
-            
-            //vesselSituation = vessel.situation.ToString();
-            //currentAlt = Math.Round(TrueAlt(),2);
-            //pctHeat = Math.Round((part.temperature/part.maxTemp)*100);
             currentDepth = Math.Round(part.depth, 2);
             VesselMass = Math.Round(vessel.totalMass);
         }
-        
+
         public void OnDestroy()
         {
             instance = null;
@@ -267,42 +254,44 @@ namespace HullBreach
 
         public bool ShipIsDamaged()
         {
-            //Check Damage Based on Heat
-            //Increase DamageState Nomal/Crit Level
-            //Flip isHullBreached to Trigger adding SeaWater
-
-            //if (part.temperature >= (part.maxTemp*breachTemp))
-            float damage = part.Damage();
-            float max_damage = part.MaxDamage();
-            float dmg_pct = damage / max_damage;
-
-            if (dmg_pct >= critBreachTemp && dmg_pct <= breachTemp )
+            if (forceHullBreach == true) // if testing a breach then this code runs
             {
                 isHullBreached = true;
-                DamageState = "Normal";
+                DamageState = "Serious";
+                return true;
             }
-            else if (dmg_pct >= 0 && dmg_pct <= critBreachTemp)
+            else // this code runs if not testing a breach
             {
-                isHullBreached = true;
-                DamageState = "Critical";
-            }
-            else
-            {
-                isHullBreached = false;
-                DamageState = "None";
-            }
+                maxDamage = part.MaxDamage();
+                _hp = part.Damage();
+                float dmg_pct = _hp / maxDamage;
+                if (dmg_pct <= MinorDmg) // if hp left is below minimum breach damage
+                {
+                    isHullBreached = true;
+                    if (dmg_pct <= FatalDmg) // if percentage of hp left is less than or equal to Fatal
+                    {
+                        DamageState = "Fatal";
+                    }
+                    else
+                    {
+                        if (dmg_pct <= SeriousDmg) // if percentage of hp left is lower than Serious
+                        {
+                            DamageState = "Serious";
+                        }
+                        else
+                        {
+                            DamageState = "Minor";
+                        }
+                    }
 
-            if (forceHullBreach == true) //forcing if testing hull breach or if Catastrophic damage triggerd
-            {
-                return true;
-            }
-            else if (DamageState == "None")
-            {
-                return false;
-            }
-            else
-            {
-                return true;
+                    return true; // regardless of ammount of damage, the hull has a hole in it
+                }
+                else // if hp left is above minimum breach damage ... this should reset the system if testing a breach and the test is cancelled
+                {
+                    isHullBreached = false;
+                    DamageState = "None";
+                    return false;
+                }
             }
         }
 
@@ -314,13 +303,13 @@ namespace HullBreach
         public double warnDepth = 100;
         public double oldVesselDepth;
 
-        private void crushingDepth()
+        private void CrushingDepth()
         {
             //Nothing crushed unless : Vessel is under water, part is crushable,part is fully submerged, part is not a hull and part is not hydroexplosive
             // Any of these true do not crush
             if (!crushable || hull || hydroExplosive || part.submergedPortion != 1.00 || TrueAlt() > 0.01) return;
 
-            if (crushable & part.depth > crushDepth & (TrueAlt()*-1) > crushDepth)
+            if (crushable & part.depth > crushDepth & (TrueAlt() * -1) > crushDepth)
             {
                 part.explode();
             }
