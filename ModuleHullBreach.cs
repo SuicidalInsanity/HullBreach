@@ -1,5 +1,7 @@
 ﻿using System;
 using UnityEngine;
+using System.Collections;
+
 
 namespace HullBreach
 {
@@ -12,6 +14,8 @@ namespace HullBreach
 
         float _hp = 0;
         float maxDamage = 0;
+        string _onScreenMessage = "";
+        bool _blinking = false;
 
         public bool isHullBreached;
         public string DamageState = "None"; //None, Minor, Serious, Fatal
@@ -151,40 +155,55 @@ namespace HullBreach
 
             if (part.WaterContact & ShipIsDamaged() & isHullBreached & hull)
             {
+                if (this.vessel == FlightGlobals.ActiveVessel)
+                {
+                    if (!_blinking)
+                    {
+                        _blinking = true;
+                        StartCoroutine(ScreenMsgBlink());
+                    }
+                }
+                else
+                {
+                    _blinking = false;
+                }
+
                 if (DamageState == "Minor")
                 {
                     vessel.IgnoreGForces(240);
+                    _onScreenMessage = "<color=#00ff00ff>Warning: Minor Hull Breach</color>";
                     part.RequestResource("SeaWater", (0 - (MinorFlooding * (0.1 + part.submergedPortion) * flowMultiplier)));
-                    if (this.vessel == FlightGlobals.ActiveVessel)
-                    {
-                        ScreenMessages.PostScreenMessage("Warning: Minor Hull Breach", 1.0f, ScreenMessageStyle.UPPER_CENTER);
-                    }
                 }
                 else
                 {
                     if (DamageState == "Serious")
                     {
                         vessel.IgnoreGForces(240);
+                        _onScreenMessage = "<color=#ffff00ff>Warning: Serious Hull Breach!</color>";
                         part.RequestResource("SeaWater", (0 - (SeriousFlooding * (0.1 + part.submergedPortion) * flowMultiplier)));
-                        if (this.vessel == FlightGlobals.ActiveVessel)
-                        {
-                            ScreenMessages.PostScreenMessage("Warning: Serious Hull Breach!", 1.0f, ScreenMessageStyle.UPPER_CENTER);
-                        }
                     }
                     else
                     {
                         if (DamageState == "Fatal")
                         {
                             vessel.IgnoreGForces(240);
+                            _onScreenMessage = "<color=#ff0000ff>Warning: FATAL HULL BREACH!!</color>";
                             part.RequestResource("SeaWater", (0 - (FatalFlooding * (0.1 + part.submergedPortion) * flowMultiplier)));
-                            if (this.vessel == FlightGlobals.ActiveVessel)
-                            {
-                                ScreenMessages.PostScreenMessage("Warning: FATAL HULL BREACH!!", 1.0f, ScreenMessageStyle.UPPER_CENTER);
-                            }
                         }
                     }
                 }
             }
+
+            IEnumerator ScreenMsgBlink()
+            {
+                if (_blinking)
+                {
+                    ScreenMessages.PostScreenMessage(_onScreenMessage, 1.0f, ScreenMessageStyle.UPPER_CENTER);
+                    yield return new WaitForSeconds(1.5f);
+                    StartCoroutine(ScreenMsgBlink());
+                }
+            }
+
 
             //If part underwater add damage at a greater rate based on depth to simulate pressure
             //sumergedPortion = Math.Round(this.part.submergedPortion, 4);
