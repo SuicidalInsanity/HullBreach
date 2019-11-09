@@ -1,7 +1,5 @@
 ﻿using System;
 using UnityEngine;
-using System.Collections;
-
 
 namespace HullBreach
 {
@@ -155,52 +153,38 @@ namespace HullBreach
 
             if (part.WaterContact & ShipIsDamaged() & isHullBreached & hull)
             {
-                if (this.vessel == FlightGlobals.ActiveVessel)
-                {
-                    if (!_blinking)
-                    {
-                        _blinking = true;
-                        StartCoroutine(ScreenMsgBlink());
-                    }
-                }
-                else
-                {
-                    _blinking = false;
-                }
-
                 if (DamageState == "Minor")
                 {
                     vessel.IgnoreGForces(240);
-                    _onScreenMessage = "<color=#00ff00ff>Warning: Minor Hull Breach</color>";
                     part.RequestResource("SeaWater", (0 - (MinorFlooding * (0.1 + part.submergedPortion) * flowMultiplier)));
+                    if (this.vessel == FlightGlobals.ActiveVessel)
+                    {
+                        ScreenMessages.PostScreenMessage("<color=#00ff00ff>Warning: Minor Hull Breach</color>", 1.0f, ScreenMessageStyle.UPPER_CENTER);
+                    }
                 }
                 else
                 {
                     if (DamageState == "Serious")
                     {
                         vessel.IgnoreGForces(240);
-                        _onScreenMessage = "<color=#ffff00ff>Warning: Serious Hull Breach!</color>";
                         part.RequestResource("SeaWater", (0 - (SeriousFlooding * (0.1 + part.submergedPortion) * flowMultiplier)));
+                        if (this.vessel == FlightGlobals.ActiveVessel)
+                        {
+                            ScreenMessages.PostScreenMessage("<color=#ffff00ff>Warning: Serious Hull Breach!</color>", 1.0f, ScreenMessageStyle.UPPER_CENTER);
+                        }
                     }
                     else
                     {
                         if (DamageState == "Fatal")
                         {
                             vessel.IgnoreGForces(240);
-                            _onScreenMessage = "<color=#ff0000ff>Warning: FATAL HULL BREACH!!</color>";
                             part.RequestResource("SeaWater", (0 - (FatalFlooding * (0.1 + part.submergedPortion) * flowMultiplier)));
+                            if (this.vessel == FlightGlobals.ActiveVessel)
+                            {
+                                ScreenMessages.PostScreenMessage("<color=#ff0000ff>Warning: FATAL HULL BREACH!!</color>", 1.0f, ScreenMessageStyle.UPPER_CENTER);
+                            }
                         }
                     }
-                }
-            }
-
-            IEnumerator ScreenMsgBlink()
-            {
-                if (_blinking)
-                {
-                    ScreenMessages.PostScreenMessage(_onScreenMessage, 1.0f, ScreenMessageStyle.UPPER_CENTER);
-                    yield return new WaitForSeconds(1.5f);
-                    StartCoroutine(ScreenMsgBlink());
                 }
             }
 
@@ -284,32 +268,35 @@ namespace HullBreach
                 maxDamage = part.MaxDamage();
                 _hp = part.Damage();
                 float dmg_pct = _hp / maxDamage;
-                if (dmg_pct <= MinorDmg) // if hp left is below minimum breach damage
+                if (dmg_pct <= MinorDmg && dmg_pct > SeriousDmg)
                 {
+                    DamageState = "Minor";
                     isHullBreached = true;
-                    if (dmg_pct <= FatalDmg) // if percentage of hp left is less than or equal to Fatal
+                    return true;
+                }
+                else
+                {
+                    if (dmg_pct <= SeriousDmg && dmg_pct > FatalDmg)
                     {
-                        DamageState = "Fatal";
+                        DamageState = "Serious";
+                        isHullBreached = true;
+                        return true;
                     }
                     else
                     {
-                        if (dmg_pct <= SeriousDmg) // if percentage of hp left is lower than Serious
+                        if (dmg_pct <= FatalDmg)
                         {
-                            DamageState = "Serious";
+                            DamageState = "Fatal";
+                            isHullBreached = true;
+                            return true;
                         }
                         else
                         {
-                            DamageState = "Minor";
+                            isHullBreached = false;
+                            DamageState = "None";
+                            return false;
                         }
                     }
-
-                    return true; // regardless of ammount of damage, the hull has a hole in it
-                }
-                else // if hp left is above minimum breach damage ... this should reset the system if testing a breach and the test is cancelled
-                {
-                    isHullBreached = false;
-                    DamageState = "None";
-                    return false;
                 }
             }
         }
