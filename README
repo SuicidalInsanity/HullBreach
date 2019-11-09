@@ -1,3 +1,38 @@
 KSP Plugin for simulating boats taking on water after damage
 
-Mod is free to distribute as long as Credit is given linking back to this repository
+Major changes to Hull breach, there are now 3 levels of Breach, Minor, Serious and Fatal.
+
+Example Config:
+
+@part[BoatHull]:NEEDS[HullBreach]
+{
+  MODULE
+  {
+    name = ModuleHullBreach
+    MinorFlooding = 2
+    SeriousFlooding = 5
+    FatalFlooding = 30
+    MinorDmg = 0.90
+    SeriousDmg = 0.6
+    FatalDmg = 0.25
+    hull = true
+    hydroExplosive = true
+  }
+  RESOURCE
+  {
+    name = SeaWater
+    amount = 1
+    maxAmount = 20000
+  }
+}
+@part[boatDeck]
+{
+  MODULE
+  {
+    name = ModuleHullBreach
+    hull = false
+    hydroExplosive = false
+    crushable = true
+    crushDepth = 200
+  }
+}
