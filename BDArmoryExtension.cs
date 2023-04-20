@@ -18,14 +18,15 @@ namespace HullBreach
             try
             {
                 PartExtensions = AssemblyLoader.loadedAssemblies
-                     .Where(a => a.name.Contains("BDArmory.Core")).SelectMany(a => a.assembly.GetExportedTypes())
-                     .SingleOrDefault(t => t.FullName == "BDArmory.Core.Extension.PartExtensions");
+                     .Where(a => a.name.Contains("BDArmory")).SelectMany(a => a.assembly.GetExportedTypes())
+                     .SingleOrDefault(t => t.FullName == "BDArmory.Extensions.PartExtensions");
                 DamageMethod = PartExtensions.GetMethod("Damage");
                 MaxDamageMethod = PartExtensions.GetMethod("MaxDamage");
                 isInstalled = true;
             }
             catch (Exception e)
             {
+                UnityEngine.Debug.Log(e.Message);
                 isInstalled = false;
             }
         }
